@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ассистент учителя</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&subset=cyrillic&display=swap" rel="stylesheet">
+<style>
+  :root { --accent:#1a3a6b; --bg:#fff; --muted:#5b6478; --line:#e3e7ef; --soft:#f4f6fa; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:#1c2233; line-height:1.5; }
+  header { border-bottom:1px solid var(--line); position:sticky; top:0; background:#fff; z-index:5; }
+  .bar { max-width:720px; margin:0 auto; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; }
+  .logo { font-weight:700; color:var(--accent); cursor:pointer; }
+  nav button { background:none; border:0; font:inherit; color:var(--accent); font-weight:500; cursor:pointer; padding:6px 8px; }
+  main { max-width:720px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:26px; margin:8px 0 6px; color:var(--accent); }
+  h2 { font-size:18px; margin:24px 0 10px; }
+  .sub { color:var(--muted); margin:0 0 18px; }
+  .search { display:flex; gap:8px; }
+  input[type=text] { flex:1; padding:12px 14px; font:inherit; border:1px solid var(--line); border-radius:10px; min-width:0; }
+  input[type=text]:focus { outline:2px solid var(--accent); border-color:transparent; }
+  .btn { background:var(--accent); color:#fff; border:0; border-radius:10px; padding:12px 16px; font:inherit; font-weight:600; cursor:pointer; }
+  .btn:hover { opacity:.92; } .btn:disabled { opacity:.55; cursor:default; }
+  .btn.ghost { background:#fff; color:var(--accent); border:1px solid var(--accent); }
+  .card { border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:10px; cursor:pointer; background:#fff; }
+  .card:hover { border-color:var(--accent); }
+  .card h3 { margin:0 0 4px; font-size:16px; }
+  .card p { margin:0; color:var(--muted); font-size:14px; }
+  .badge { display:inline-block; margin-top:8px; font-size:12px; background:var(--soft); color:var(--accent); padding:2px 8px; border-radius:20px; }
+  .box { background:var(--soft); border-radius:12px; padding:14px 16px; margin:8px 0 14px; white-space:pre-wrap; }
+  .quote { border-left:4px solid var(--accent); }
+  .label { font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-top:18px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; }
+  .big { font-size:48px; font-weight:700; color:var(--accent); margin:4px 0; }
+  .error { background:#fdecec; color:#9b1c1c; border-radius:10px; padding:10px 14px; margin-bottom:14px; }
+  .note { font-size:12px; color:var(--muted); margin-top:24px; }
+  .back { background:none; border:0; color:var(--accent); font:inherit; font-weight:500; cursor:pointer; padding:0; margin-bottom:8px; }
+  .hidden { display:none; }
+  @media (max-width:480px){ h1{font-size:22px;} .btn{width:100%;} .search{flex-direction:column;} .row .btn{flex:1;} }
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <span class="logo" onclick="showHome()">Ассистент учителя</span>
+  <nav><button onclick="showHome()">Главная</button><button onclick="showStats()">Статистика</button></nav>
+</div></header>
+
+<main>
+  <div id="error" class="error hidden"></div>
+
+  <!-- Экран 1: главная -->
+  <section id="screen-home">
+    <h1>Знайте свои права</h1>
+    <p class="sub">Найдите ситуацию, получите ссылку на норму закона и вежливый шаблон отказа.</p>
+    <div class="search">
+      <input type="text" id="q" placeholder="Например: мыть окна, дежурство, деньги" autocomplete="off">
+      <button class="btn" id="searchBtn">Найти</button>
+    </div>
+    <h2>Популярные ситуации</h2>
+    <div id="popular"></div>
+  </section>
+
+  <!-- Экран 2: результаты поиска -->
+  <section id="screen-results" class="hidden">
+    <button class="back" onclick="showHome()">← Назад</button>
+    <h2 id="resultsTitle" style="margin-top:0"></h2>
+    <div id="results"></div>
+  </section>
+
+  <!-- Экран 3: детали -->
+  <section id="screen-detail" class="hidden">
+    <button class="back" onclick="goBack()">← Назад</button>
+    <h1 id="dTitle" style="font-size:22px"></h1>
+    <p id="dDesc" class="sub"></p>
+    <div class="label">Норма закона</div>
+    <div class="box quote"><strong id="dArticle"></strong><br><span id="dLaw"></span></div>
+    <div class="label">Шаблон вежливого отказа</div>
+    <div class="box" id="dTemplate"></div>
+    <div class="row">
+      <button class="btn" id="copyBtn">Скопировать</button>
+      <button class="btn ghost" id="reportBtn">Со мной это было</button>
+    </div>
+    <p id="dCount" class="sub" style="margin-top:12px"></p>
+  </section>
+
+  <!-- Экран 4: статистика -->
+  <section id="screen-stats" class="hidden">
+    <button class="back" onclick="showHome()">← Назад</button>
+    <h1>Статистика</h1>
+    <div class="sub">Анонимно зафиксировано случаев:</div>
+    <div class="big" id="total">0</div>
+    <h2>Топ-3 нарушения</h2>
+    <div id="top"></div>
+  </section>
+
+  <p class="note">Справочная информация, не является юридической консультацией. Сверяйте нормы с актуальными
+  редакциями законов на adilet.zan.kz. Счётчик анонимный: личные данные не собираются.</p>
+</main>
+
+<script>
+const API = "/api";
+const screens = ["home", "results", "detail", "stats"];
+let currentId = null;
+let lastScreen = "home";
+
+const $ = id => document.getElementById(id);
+
+function show(name) {
+  screens.forEach(s => $("screen-" + s).classList.toggle("hidden", s !== name));
+  hideError();
+  window.scrollTo(0, 0);
+}
+function showError(msg) { const e = $("error"); e.textContent = msg; e.classList.remove("hidden"); }
+function hideError() { $("error").classList.add("hidden"); }
+
+// Единая обёртка над fetch: показывает понятные ошибки
+async function api(path, options) {
+  let res;
+  try { res = await fetch(API + path, options); }
+  catch (e) { throw new Error("Нет связи с сервером. Проверьте, что бэкенд запущен на localhost:8000."); }
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  if (!res.ok) throw new Error((data && data.detail) || "Ошибка сервера (" + res.status + ")");
+  return data;
+}
+
+// Карточка списка (через DOM, без innerHTML: защита от XSS)
+function makeCard(v) {
+  const d = document.createElement("div");
+  d.className = "card";
+  const h = document.createElement("h3"); h.textContent = v.title;
+  const p = document.createElement("p"); p.textContent = v.description;
+  const b = document.createElement("span"); b.className = "badge"; b.textContent = "Случаев: " + v.report_count;
+  d.append(h, p, b);
+  d.onclick = () => showDetail(v.id);
+  return d;
+}
+
+async function showHome() {
+  show("home"); lastScreen = "home";
+  try {
+    const data = await api("/search?q=");
+    const box = $("popular"); box.innerHTML = "";
+    const LIMIT = 8;   // на главной показываем только часть списка
+    data.results.slice(0, LIMIT).forEach(v => box.appendChild(makeCard(v)));
+    if (data.results.length > LIMIT) {
+      const more = document.createElement("button");
+      more.className = "btn ghost";
+      more.textContent = "Показать все (" + data.results.length + ")";
+      more.onclick = () => { box.innerHTML = ""; data.results.forEach(v => box.appendChild(makeCard(v))); };
+      box.appendChild(more);
+    }
+  } catch (e) { showError(e.message); }
+}
+
+async function doSearch() {
+  const q = $("q").value.trim();
+  if (!q) { showHome(); return; }
+  try {
+    const data = await api("/search?q=" + encodeURIComponent(q));
+    show("results"); lastScreen = "results";
+    $("resultsTitle").textContent = data.results.length ? "Найдено: " + data.results.length : "Ничего не найдено. Попробуйте другие слова.";
+    const box = $("results"); box.innerHTML = "";
+    data.results.forEach(v => box.appendChild(makeCard(v)));
+  } catch (e) { showError(e.message); }
+}
+
+async function showDetail(id) {
+  try {
+    const v = await api("/violation/" + id);
+    currentId = id;
+    show("detail");
+    $("dTitle").textContent = v.title;
+    $("dDesc").textContent = v.description;
+    $("dArticle").textContent = v.law_article;
+    $("dLaw").textContent = v.law_text;
+    $("dTemplate").textContent = v.refusal_template;
+    $("dCount").textContent = "Зафиксировано случаев: " + v.report_count;
+    $("copyBtn").textContent = "Скопировать";
+    const done = localStorage.getItem("reported_" + id);   // защита от случайных повторных нажатий
+    $("reportBtn").disabled = !!done;
+    $("reportBtn").textContent = done ? "Спасибо, учтено" : "Со мной это было";
+  } catch (e) { showError(e.message); }
+}
+
+function goBack() { lastScreen === "results" ? show("results") : showHome(); }
+
+async function copyTemplate() {
+  const text = $("dTemplate").textContent;
+  try {
+    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(text);
+    else {  // запасной вариант
+      const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t);
+      t.select(); document.execCommand("copy"); t.remove();
+    }
+    $("copyBtn").textContent = "Скопировано ✓";
+  } catch (e) { showError("Не удалось скопировать. Выделите текст вручную."); }
+}
+
+async function sendReport() {
+  $("reportBtn").disabled = true;
+  try {
+    const r = await api("/report", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ violation_id: currentId })
+    });
+    localStorage.setItem("reported_" + currentId, "1");
+    $("reportBtn").textContent = "Спасибо, учтено";
+    $("dCount").textContent = "Зафиксировано случаев: " + r.report_count;
+  } catch (e) { $("reportBtn").disabled = false; showError(e.message); }
+}
+
+async function showStats() {
+  try {
+    const s = await api("/stats");
+    show("stats");
+    $("total").textContent = s.total_reports;
+    const box = $("top"); box.innerHTML = "";
+    s.top_violations.forEach((v, i) => {
+      const d = document.createElement("div"); d.className = "card";
+      const h = document.createElement("h3"); h.textContent = (i + 1) + ". " + v.title;
+      const b = document.createElement("span"); b.className = "badge"; b.textContent = "Случаев: " + v.report_count;
+      d.append(h, b); d.onclick = () => showDetail(v.id); box.appendChild(d);
+    });
+  } catch (e) { showError(e.message); }
+}
+
+$("searchBtn").onclick = doSearch;
+$("q").addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
+$("copyBtn").onclick = copyTemplate;
+$("reportBtn").onclick = sendReport;
+showHome();
+</script>
+</body>
+</html>
